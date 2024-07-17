@@ -7,7 +7,7 @@ I wrote `ev-cmd` because I didn't have an easy way to bind commands to my [Koole
 Install from the AUR using
 
 ```
-yay -S ev-dev
+yay -S ev-cmd
 ```
 
 Build using `cargo build --release`
