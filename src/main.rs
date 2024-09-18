@@ -1,4 +1,4 @@
-use std::{error::Error, fs, path::PathBuf, process::Command, str::FromStr};
+use std::{error::Error, fs, path::PathBuf, process::Command, str::FromStr, thread};
 
 use clap::Parser;
 use evdev::Device;
@@ -68,28 +68,25 @@ fn main() -> Result<(), Box<dyn Error>> {
             let key = format!("{}", code);
             println!("Caught keycode {}", key);
 
-            let cmd = config.get(key.as_str());
-            match cmd {
-                None => {}
-                Some(cmd) => match cmd.as_str() {
-                    Some(c_raw) => {
-                        let c = Command::new("/bin/sh").args(["-c", c_raw]).output();
-                        match c {
-                            Ok(o) => {
-                                println!(
-                                    "Executed \"{}\": {:?}",
-                                    c_raw,
-                                    String::from_utf8(o.stdout)
-                                );
-                            }
-                            Err(e) => {
-                                println!("Failed to execute \"{}\": {}", c_raw, e);
-                            }
-                        }
+            let cmd = match config.get(key.as_str()) {
+                Some(val) => val,
+                None => continue,
+            };
+            let c_raw = cmd.to_string();
+
+            thread::spawn(move || {
+                let c = Command::new("/bin/sh")
+                    .args(["-c", c_raw.as_str()])
+                    .output();
+                match c {
+                    Ok(o) => {
+                        println!("Executed \"{}\": {:?}", c_raw, String::from_utf8(o.stdout));
                     }
-                    None => {}
-                },
-            }
+                    Err(e) => {
+                        println!("Failed to execute \"{}\": {}", c_raw, e);
+                    }
+                }
+            });
         }
     }
 }
