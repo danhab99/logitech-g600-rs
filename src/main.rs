@@ -4,7 +4,6 @@ use std::{
 
 use clap::Parser;
 use evdev::Device;
-use toml::value;
 
 #[derive(Parser, Debug)]
 #[command()]
@@ -165,20 +164,24 @@ fn main() -> Result<(), Box<dyn Error>> {
                     println!("Mod changed {}", mod_activated);
                 }
                 "UP" => {
-                    current_config_index += 1;
-                    if current_config_index >= config_names.len() as i16 {
-                        current_config_index = 0;
+                    if state == "DOWN" {
+                        current_config_index += 1;
+                        if current_config_index >= config_names.len() as i16 {
+                            current_config_index = 0;
+                        }
+                        changed = true;
+                        println!("Change profile up {}", current_config_index);
                     }
-                    changed = true;
-                    println!("Change profile up {}", current_config_index);
                 }
                 "DOWN" => {
-                    current_config_index -= 1;
-                    if current_config_index < 0 {
-                        current_config_index = (config_names.len() as i16) - 1;
+                    if state == "DOWN" {
+                        current_config_index -= 1;
+                        if current_config_index < 0 {
+                            current_config_index = (config_names.len() as i16) - 1;
+                        }
+                        changed = true;
+                        println!("Change profile down {}", current_config_index);
                     }
-                    changed = true;
-                    println!("Change profile down {}", current_config_index);
                 }
                 _ => {
                     let mut key = vec![code, state];
@@ -196,12 +199,13 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
 
             if changed {
+                changed = false;
                 let current_config = some_or!(
                     config.get(config_names[current_config_index as usize]),
                     panic!("No configs found")
                 );
 
-                match current_config.get("OnActivate") {
+                match current_config.get("ON_ACTIVATE") {
                     None => (),
                     Some(activate) => match activate.as_str() {
                         None => (),
