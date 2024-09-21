@@ -167,16 +167,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5443807d6dff69373d433ab9ef5378ad8df50ca6298caf15de6e52e24aaf54d5"
 
 [[package]]
-name = "ev-cmd"
-version = "0.1.0"
-dependencies = [
- "clap",
- "dirs",
- "evdev",
- "toml",
-]
-
-[[package]]
 name = "evdev"
 version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -248,6 +238,16 @@ checksum = "c0ff37bd590ca25063e35af745c343cb7a0271906fb7b37e4813e8f79f00268d"
 dependencies = [
  "bitflags 2.6.0",
  "libc",
+]
+
+[[package]]
+name = "logitech-g600-rs"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "dirs",
+ "evdev",
+ "toml",
 ]
 
 [[package]]
