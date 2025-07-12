@@ -1,9 +1,17 @@
 use std::{
-    collections::HashMap, error::Error, fs, path::PathBuf, process::Command, str::FromStr, thread,
+    collections::HashMap,
+    error::Error,
+    fs,
+    fs::File,
+    path::PathBuf,
+    process::{self, Command},
+    str::FromStr,
+    thread,
 };
 
 use clap::Parser;
 use evdev::Device;
+use fs2::FileExt;
 
 #[derive(Parser, Debug)]
 #[command()]
@@ -14,36 +22,14 @@ struct Args {
     #[arg(short, long)]
     config_path: Option<String>,
 
+    #[arg(short = 'x', long, default_value_t = false)]
+    debug: bool,
+
     #[arg(short, long)]
-    xdebug: bool,
+    lock_file: Option<String>,
 }
 
 const CONFIG_FILE_NAME: &str = "g600.toml";
-
-macro_rules! some_or {
-    // Case where the expression is `Some`, it unpacks and returns the value.
-    ($expr:expr, break) => {
-        match $expr {
-            Some(val) => val,
-            None => break,
-        }
-    };
-
-    // Case where the expression is `Some`, it unpacks and returns the value.
-    ($expr:expr, continue) => {
-        match $expr {
-            Some(val) => val,
-            None => continue,
-        }
-    };
-
-    ($expr:expr, $none:expr) => {
-        match $expr {
-            Some(val) => val,
-            None => $none,
-        }
-    };
-}
 
 fn execute(c: &str) {
     let cmd = String::from(c);
@@ -81,6 +67,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let args = Args::parse();
 
+    let x = args.lock_file.unwrap_or("/tmp/logitech-g600-rs.pid.lock".to_string());
+    let lock_path = PathBuf::from_str(x.as_str())?;
+    let file = File::create(&lock_path).expect("Could not create lock file");
+    if let Err(e) = file.try_lock_exclusive() {
+        println!("Another instance is already running: {e}");
+        process::exit(1);
+    }
+
     let mut cwd_config_path = std::env::current_dir().unwrap();
     cwd_config_path.push(CONFIG_FILE_NAME);
 
@@ -108,11 +102,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    let config = some_or!(maybe_config, panic!("didn't find config file"));
+    let config = maybe_config.ok_or("didn't find config file")?;
 
     let mut device = Device::open(args.device_path)?;
 
-    if args.xdebug {
+    if args.debug {
         loop {
             let events = device.fetch_events()?;
             for event in events {
@@ -143,20 +137,19 @@ fn main() -> Result<(), Box<dyn Error>> {
                 _ => continue,
             };
 
-            if state == "DOWN" && c == 0 {
-                continue;
-            }
-            if c == 0 && v == 0 {
+            if state == "DOWN" && c == 0 && v == 0 {
                 continue;
             }
 
             println!("Keypress code={} value={}", c, v);
-            let code = keycode_name[&c];
+            let code = match keycode_name.get(&c) {
+                None => continue,
+                Some(x) => *x,
+            };
 
-            let current_config = some_or!(
-                config.get(config_names[current_config_index as usize]),
-                panic!("No configs found")
-            );
+            let current_config = config
+                .get(config_names[current_config_index as usize])
+                .ok_or("unable to find config")?;
 
             match code {
                 "MOD" => {
@@ -192,28 +185,26 @@ fn main() -> Result<(), Box<dyn Error>> {
                     let k = key.join("_");
                     println!("Caught keypress {}", k);
 
-                    let cmd = some_or!(current_config.get(k.as_str()), continue);
-                    let c = some_or!(cmd.as_str(), continue);
-                    execute(c);
+                    match current_config.get(k.as_str()).and_then(|cmd| cmd.as_str()) {
+                        Some(c) => execute(c),
+                        None => continue,
+                    }
                 }
             }
 
             if changed {
                 changed = false;
-                let current_config = some_or!(
-                    config.get(config_names[current_config_index as usize]),
-                    panic!("No configs found")
-                );
 
-                match current_config.get("ON_ACTIVATE") {
-                    None => (),
-                    Some(activate) => match activate.as_str() {
-                        None => (),
-                        Some(cmd) => {
-                            println!("Executing activation command {}", cmd);
-                            execute(cmd)
-                        }
-                    },
+                match config
+                    .get(config_names[current_config_index as usize])
+                    .and_then(|current_config| current_config.get("ON_ACTIVATE"))
+                    .and_then(|activate| activate.as_str())
+                {
+                    Some(cmd) => {
+                        println!("Executing activation command {}", cmd);
+                        execute(cmd);
+                    }
+                    None => {}
                 }
             }
         }

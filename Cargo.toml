@@ -9,6 +9,7 @@ edition = "2021"
 clap = { version = "4.5.9", features = ["derive"] }
 dirs = "5.0.1"
 evdev = "0.12.2"
+fs2 = "0.4.3"
 toml = "0.8.14"
 
 [profile.release]
