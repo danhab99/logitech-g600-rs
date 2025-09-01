@@ -18,6 +18,7 @@
             buildInputs = with pkgs; [
               rustup
               cargo
+              libratbag
             ];
 
             shellHook = "zsh";
