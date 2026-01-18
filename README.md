@@ -4,6 +4,24 @@ This is a Rust driver for the Logitech G600 mouse that lets you create custom bu
 
 ## Installation
 
+### Option 1: Using Nix Flakes (Recommended)
+
+If you have Nix with flakes enabled, you can install directly:
+
+```bash
+# Install to your profile
+nix profile install github:danhab99/logitech-g600-rs
+
+# Or run directly without installing
+nix run github:danhab99/logitech-g600-rs -- /dev/input/mouse0
+
+# Or build locally
+nix build
+./result/bin/logitech-g600-rs /dev/input/mouse0
+```
+
+### Option 2: Building from Source
+
 1. **Clone the Repository:**
     ```bash
     git clone https://github.com/danhab99/logitech-g600-rs.git

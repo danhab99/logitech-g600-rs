@@ -13,6 +13,17 @@
         };
 
       in {
+        packages = {
+          default = pkgs.rustPlatform.buildRustPackage {
+            pname = "logitech-g600-rs";
+            version = "0.1.0";
+            src = ./.;
+            cargoLock.lockFile = ./Cargo.lock;
+            nativeBuildInputs = with pkgs; [ pkg-config ];
+            buildInputs = with pkgs; [ libratbag ];
+          };
+        };
+
         devShells = {
           default = pkgs.mkShell {
             buildInputs = with pkgs; [
